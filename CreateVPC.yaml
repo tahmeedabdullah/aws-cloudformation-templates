@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+# This CloudFormation template deploys a basic VPC / Network.  Specifically:
+# It deploys a VPC with 2 subnets (1 public, 1 private)
+
+Description: Create A VPC with 2 subnets (1 public, 1 private)
+
+Parameters:
+  VpcCidrBlock:
+    Type: String
+    Description: Enter the VPC CIDR block (e.g. 10.0.0.0/16)
+    AllowedPattern: ^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$
+    ConstraintDescription: Please enter a valid CIDR block (e.g. 10.0.0.0/16)
+  VpcName:
+    Type: String
+    Description: Enter a name for the VPC (e.g. my-vpc)
+  PublicSubnetCidrBlock:
+    Type: String
+    Description: Enter the CIDR block for subnet 1 (e.g. 10.0.1.0/24)
+    AllowedPattern: ^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$
+    ConstraintDescription: Please enter a valid CIDR block (e.g. 10.0.1.0/24)
+  PublicSubnetName:
+    Type: String
+    Description: Enter a name for subnet 1 (e.g. my-subnet-1)
+  PrivateSubnetCidrBlock:
+    Type: String
+    Description: Enter the CIDR block for subnet 2 (e.g. 10.0.2.0/24)
+    AllowedPattern: ^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$
+    ConstraintDescription: Please enter a valid CIDR block (e.g. 10.0.2.0/24)
+  PrivateSubnetName:
+    Type: String
+    Description: Enter a name for subnet 2 (e.g. my-subnet-2)
+  InternetGatewayName:
+    Type: String
+    Description: Enter a name for the Internet Gateway (e.g. my-igw)
+  PublicRouteTableName:
+    Type: String
+    Description: Enter a name for the public route table (e.g. my-public-rt)
+  PrivateRouteTableName:
+    Type: String
+    Description: Enter a name for the private route table (e.g. my-private-rt)
+
+Resources:
+
+# First, a VPC:
+
+  Vpc:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref VpcName
+
+# Our VPC will need internet access: 
+
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref InternetGatewayName
+
+  InternetGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+# Now some subnets, 1 public and 1 private:
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetCidrBlock
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Ref PublicSubnetName
+  PrivateSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnetCidrBlock
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Ref PrivateSubnetName
+
+ # Public route table has direct routing to IGW:
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+      - Key: Name
+        Value: !Ref PublicRouteTableName
+  PublicRoute1:  
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      
+  # Attach the public subnets to public route table
+  
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+ # Create a private route table for future use
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+      - Key: Name
+        Value: !Ref PrivateRouteTableName
+  
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
