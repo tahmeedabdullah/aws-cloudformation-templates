@@ -1,3 +1,5 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Create a EC2'
 Parameters:
   InstanceName:
     Description: "Instance Name for the EC2 instance"
