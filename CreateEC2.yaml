@@ -1,0 +1,80 @@
+Parameters:
+  InstanceName:
+    Description: "Instance Name for the EC2 instance"
+    Type: String
+    Default: "Dev"
+    AllowedPattern: "[A-Za-z0-9-]+"
+  InstanceType:
+    Description: "Instance type for the EC2 instance(Allowed Types: T3, C5, M5, R5)"
+    Type: String
+    Default: "t3.micro"
+    AllowedValues:
+        - t3.micro
+        - t3.small
+        - t3.medium
+        - t3.large
+        - m5.medium
+        - m5.large
+        - m5.xlarge
+        - m5.2xlarge
+        - c5.large
+        - c5.xlarge
+        - c5.2xlarge
+        - c5.4xlarge
+        - c5.8xlarge
+        - r5.large
+        - r5.xlarge
+        - r5.2xlarge
+        - r5.4xlarge
+        - r5.8xlarge
+    ConstraintDescription : EC2 Type Must exist
+  ImageId:
+    Description: "ID of the Amazon Machine Image (AMI) for the EC2 instance"
+    Type: String
+    Default: "ami-0c94855ba95c71c99" # Amazon Linux 2 AMI (HVM), SSD Volume Type
+    ConstraintDescription : AMI Must exist
+  SubnetId:
+    Description: "ID of the subnet in which to launch the EC2 instance"
+    Type: AWS::EC2::Subnet::Id
+    ConstraintDescription : Subnet Must exist
+  SecurityGroupId:
+    Description: "ID of the security group to associate with the EC2 instance"
+    Type: AWS::EC2::SecurityGroup::Id
+    ConstraintDescription : Security Group Must exist
+  KeyPairName:
+    Description: "Name of the key pair to use for SSH access"
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription : EC2 Key Pair must exist
+  VolumeSize:
+    Description: "Size of the EBS volume to attach to the EC2 instance (in GB)"
+    Type: Number
+    Default: 8
+    MinValue: 1
+    MaxValue: 1024
+  VolumeType:
+    Description: "Type of the EBS volume to attach to the EC2 instance"
+    Type: String
+    Default: "gp2"
+    AllowedValues:
+      - gp2
+Resources:
+  MyEC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId
+      KeyName: !Ref KeyPairName
+      Tags:
+        - Key: "Name"
+          Value: !Ref InstanceName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref SecurityGroupId
+          SubnetId: !Ref SubnetId
+      BlockDeviceMappings:
+        - DeviceName: /dev/sdf
+          Ebs:
+            VolumeSize: !Ref VolumeSize
+            VolumeType: !Ref VolumeType
